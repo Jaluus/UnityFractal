@@ -427,6 +427,38 @@ float2 mandelbulb (in float3 p,float _power,float b,float _iterations,float _smo
    
 }
 
+float2 mandelbulbS(float3 position, float power, float b, float _iterations, float _smoothRadius) {
+    float3 z = position;
+    float dr = 1.0;
+    float r = 0.0;
+    int iterations = 0;
+
+    for (int i = 0; i < 15; i++) {
+        iterations = i;
+        r = length(z);
+
+        if (r > 2) {
+            break;
+        }
+
+        // convert to polar coordinates
+        float theta = acos(z.z / r);
+        float phi = atan2(z.y, z.x);
+        dr = pow(r, power - 1.0) * power * dr + 1.0;
+
+        // scale and rotate the point
+        float zr = pow(r, power);
+        theta = theta * power;
+        phi = phi * power;
+
+        // convert back to cartesian coordinates
+        z = zr * float3(sin(theta) * cos(phi), sin(phi) * sin(theta), cos(theta));
+        z += position;
+    }
+    float dst = 0.5 * log(r) * r / dr;
+    return float2(dst*1, iterations);
+}
+
 //mandelbulb2
 float2 mandelbulb2 (in float3 p,float _power,float b,float _iterations,float _smoothRadius){
     

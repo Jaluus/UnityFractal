@@ -26,7 +26,7 @@
 
             // Fractal Options
             uniform int _renderMode;
-            uniform int _mandelExp;
+            uniform float _mandelExp;
 
             // Precision Params
             uniform float _gradientPrecision;
@@ -115,7 +115,7 @@
                     float modZ = pMod1(p.z, _modInterval.z);
                 }
 
-                float2 SDF = float2(sdSphere(p, 0.5),0);
+                float2 SDF = float2(sdSphere(p, 0.5),1);
 
                 if (_renderMode == 1) {
                     SDF = sdMenger(p, _width, _Iterations, _modOffsetPos, _smoothingRadius, _scalingPerIteration, _iterationTransform);
@@ -129,18 +129,18 @@
                 }
                 if (_renderMode == 4) {
                     //float mandelbulb(in float3 p, float _power, float b, float _iterations, float _smoothRadius)
-                    SDF = mandelbulb(p, _mandelExp ,_width, _Iterations, 1) ;
+                    SDF = mandelbulbS(p, _mandelExp ,_width, _Iterations, 1) ;
                 }
-                return SDF.x;
+                return SDF;
             }
 
             float3 getNormal(float3 p)
             {
                 const float2 offset = float2(_gradientPrecision, 0.0); //change to change gradientPrecision
                 float3 n = float3( //maybe try a better solution? One thats faster / Calling the distance field 6 times is heavy
-                    distanceField(p + offset.xyy) - distanceField(p - offset.xyy),
-                    distanceField(p + offset.yxy) - distanceField(p - offset.yxy),
-                    distanceField(p + offset.yyx) - distanceField(p - offset.yyx));
+                    distanceField(p + offset.xyy).x - distanceField(p - offset.xyy).x,
+                    distanceField(p + offset.yxy).x - distanceField(p - offset.yxy).x,
+                    distanceField(p + offset.yyx).x - distanceField(p - offset.yyx).x);
                 return normalize(n);
             }
 
@@ -148,7 +148,7 @@
             {
                 for (float t = mint; t < maxt;)
                 {
-                    float h = distanceField(ro + rd * t);
+                    float h = distanceField(ro + rd * t).x;
                     if (h < 0.001) //Maybe change it to make it more crisp
                     {
                         return 0.0;
@@ -163,7 +163,7 @@
                 float result = 1.0;
                 for (float t = mint; t < maxt;)
                 {
-                    float h = distanceField(ro + rd * t);
+                    float h = distanceField(ro + rd * t).x;
                     if (h < 0.001) //Maybe change it to make it more crisp
                     {
                         return 0.0;
@@ -182,12 +182,12 @@
                 for (int i = 1; i <= _AmbientOcclusionIterations; i++)
                 {
                     dist = step * i;
-                    ao += max(0.0, (dist - distanceField(p + n * dist)) / dist);
+                    ao += max(0.0, (dist - distanceField(p + n * dist).x) / dist);
                 }
                 return (1.0 - ao * _AmbientOcclusionIntensity);
             }
 
-            float3 Shading(float3 p, float3 n, float i)
+            float3 Shading(float3 p, float3 n, float i, float escapeIteration)
             {
                 float3 result;
                 //Diffuse Color
@@ -213,7 +213,7 @@
                 }
 
 
-                result = shadow * light * color * ao + glow;
+                result = (shadow * light * color * ao + glow) * escapeIteration;
                 return result;
             }
 
@@ -233,22 +233,22 @@
 
                     float3 p = ro + rd * t;
                     //check for hit
-                    float d = distanceField(p);
+                    float2 dist = distanceField(p);
 
-                    if (d < _precision) //We have hit something!
+                    if (dist.x < _precision) //We have hit something!
                     {
                         //shading!
                         float3 n = getNormal(p);
-                        float3 s = Shading(p, n, i); // EdgeGlow
+                        float EI = saturate(dist.y / 16.0);
+                        float3 s = Shading(p, n, i, 1);
                         
-
                         result = fixed4(s, 1);
                         return result;
                     }
                     if (_enableRealGlow == 1 && _realGlowIntensity != 0) {
-                        RealGlow = min(RealGlow, (1/_realGlowIntensity) * pow(d / t , _realGlowPower)); 
+                        RealGlow = min(RealGlow, (1/_realGlowIntensity) * pow(dist.x / t , _realGlowPower)); 
                     }
-                    t += d;
+                    t += dist.x;
                 }
 
                 result = fixed4(_realGlowColor, (1 - RealGlow ) );

@@ -40,7 +40,7 @@ public class RaymarchCamera : SceneViewFilter
 
     [Header("Fractal Option")]
     public int _renderMode; //Atm there are 5 modes
-    public int _mandelExp; //Atm there are 5 modes
+    public float _mandelExp; //Atm there are 5 modes
 
     [Header("Precision")]
     public float _maxDistance = 200;
@@ -125,7 +125,7 @@ public class RaymarchCamera : SceneViewFilter
      }
     public void SetMandelPower(Slider slider)
     {
-        _mandelExp = 2* (int)slider.value;
+        _mandelExp = slider.value;
     }
     public void SetFractal(Slider slider)
     {
@@ -299,7 +299,7 @@ public class RaymarchCamera : SceneViewFilter
 
         //Fractal Option_mandelExp
         _raymarchMaterial.SetInt("_renderMode", _renderMode);
-        _raymarchMaterial.SetInt("_mandelExp", _mandelExp);
+        _raymarchMaterial.SetFloat("_mandelExp", Mathf.Max(_mandelExp,1.01f));
 
 
         //Precision Params
